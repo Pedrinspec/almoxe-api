@@ -1,5 +1,6 @@
 package com.almoxe.almoxeapi.movimentacao;
 
+import com.almoxe.almoxeapi.obra.ObraResponse;
 import com.almoxe.almoxeapi.usuario.UsuarioResponse;
 
 import java.math.BigDecimal;
@@ -13,11 +14,12 @@ public record MovimentacaoResponse(
         BigDecimal quantidade,
         Instant dataHora,
         UsuarioResponse usuario,
-        UUID obraId,
+        ObraResponse obra,
         String observacao
 ) {
 
     public static MovimentacaoResponse from(Movimentacao mov) {
+        ObraResponse obra = mov.getObra() == null ? null : ObraResponse.from(mov.getObra());
         return new MovimentacaoResponse(
                 mov.getId(),
                 mov.getItemEstoque().getId(),
@@ -25,7 +27,7 @@ public record MovimentacaoResponse(
                 mov.getQuantidade(),
                 mov.getDataHora(),
                 UsuarioResponse.from(mov.getUsuario()),
-                mov.getObraId(),
+                obra,
                 mov.getObservacao()
         );
     }

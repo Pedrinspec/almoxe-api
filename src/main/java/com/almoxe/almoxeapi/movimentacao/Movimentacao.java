@@ -1,6 +1,7 @@
 package com.almoxe.almoxeapi.movimentacao;
 
 import com.almoxe.almoxeapi.item.ItemEstoque;
+import com.almoxe.almoxeapi.obra.Obra;
 import com.almoxe.almoxeapi.usuario.Usuario;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -38,8 +39,9 @@ public class Movimentacao {
     @JoinColumn(name = "item_estoque_id", nullable = false)
     private ItemEstoque itemEstoque;
 
-    @Column(name = "obra_id")
-    private UUID obraId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "obra_id")
+    private Obra obra;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "usuario_id", nullable = false)

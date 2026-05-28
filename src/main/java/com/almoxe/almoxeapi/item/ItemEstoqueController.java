@@ -30,6 +30,26 @@ public class ItemEstoqueController {
         return ResponseEntity.created(URI.create("/itens/" + item.id())).body(item);
     }
 
+    @PostMapping("/{id}/alocacao")
+    public ItemEstoqueResponse alocar(@PathVariable UUID id, @Valid @RequestBody AlocacaoRequest request) {
+        return service.alocar(id, request);
+    }
+
+    @PostMapping("/{id}/uso")
+    public ItemEstoqueResponse usar(@PathVariable UUID id, @Valid @RequestBody OperacaoRequest request) {
+        return service.usar(id, request);
+    }
+
+    @PostMapping("/{id}/retorno")
+    public ItemEstoqueResponse retornar(@PathVariable UUID id, @Valid @RequestBody OperacaoRequest request) {
+        return service.retornar(id, request);
+    }
+
+    @PostMapping("/{id}/baixa")
+    public ItemEstoqueResponse baixar(@PathVariable UUID id, @Valid @RequestBody BaixaRequest request) {
+        return service.baixar(id, request);
+    }
+
     @GetMapping
     public List<ItemEstoqueResponse> listar() {
         return service.listar();
