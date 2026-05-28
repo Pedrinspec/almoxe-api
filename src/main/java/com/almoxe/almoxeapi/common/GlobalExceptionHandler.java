@@ -21,6 +21,13 @@ public class GlobalExceptionHandler {
                         "Recurso não encontrado", List.of(ex.getMessage())));
     }
 
+    @ExceptionHandler(RegraNegocioException.class)
+    public ResponseEntity<ErrorResponse> handleRegraNegocio(RegraNegocioException ex) {
+        return ResponseEntity.unprocessableEntity().body(
+                new ErrorResponse(Instant.now(), HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                        "Regra de negócio violada", List.of(ex.getMessage())));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleConflict(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
