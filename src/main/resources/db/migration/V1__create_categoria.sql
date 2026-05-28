@@ -1,0 +1,4 @@
+CREATE TABLE categoria (
+    id UUID PRIMARY KEY,
+    nome VARCHAR(120) NOT NULL UNIQUE
+);
