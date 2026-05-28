@@ -1,4 +1,4 @@
-package com.amoxe.almoxeapi;
+package com.almoxe.almoxeapi;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

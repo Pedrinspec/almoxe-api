@@ -8,7 +8,7 @@
         <version>4.0.6</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.amoxe</groupId>
+    <groupId>com.almoxe</groupId>
     <artifactId>almoxe-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>almoxe-api</name>

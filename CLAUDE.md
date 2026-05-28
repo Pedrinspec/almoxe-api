@@ -212,11 +212,12 @@ Arquivos nunca vão dentro do Postgres como BLOB.
 
 **Banco rodando via Docker Compose** (arquivo `docker-compose.yml` na raiz do projeto):
 - Imagem: `postgres:17`
-- Banco: `estoque`
-- Usuário: `estoque_app`
+- Banco: `almoxe_db`
+- Usuário: `almoxe_app`
 - Senha: `senha_local_dev` (fraca de propósito — só ambiente local; trocar antes de cloud)
 - Porta: `5432:5432`
 - Volume persistente: `dados_postgres`
+- Container name: `almoxe-postgres`
 
 Comandos:
 - Subir: `docker compose up -d`
@@ -229,10 +230,10 @@ Comandos:
 ## Estado atual do projeto
 
 - Setup de ambiente: **completo** (Java 25, Docker, Postgres rodando, DBeaver conectado, projeto Spring Boot gerado e aberto no IntelliJ).
-- Dependências no `pom.xml`: Spring Web, Spring Data JPA, PostgreSQL Driver, Spring Boot DevTools, Lombok.
-- Conexão `application.properties` com o banco: **pendente** — próximo passo imediato.
-- Versionamento Git/GitHub: **pendente** — fazer logo após o primeiro `application.properties` funcionar. Usar "Share Project on GitHub" do IntelliJ Ultimate. Repositório `almoxe-api`.
-- Primeira entidade: **pendente** — sugestão de começar por uma simples (Categoria ou Obra) para validar o ciclo completo Entity → Repository → Service → Controller antes de enfrentar ItemEstoque com a máquina de estados.
+- Dependências no `pom.xml`: `spring-boot-starter-webmvc` (no Spring Boot 4 o antigo `-web` foi dividido em `-webmvc` e `-webflux`), `spring-boot-starter-data-jpa`, PostgreSQL Driver, Spring Boot DevTools, Lombok. Para testes: `spring-boot-starter-data-jpa-test` e `spring-boot-starter-webmvc-test`.
+- Conexão `application.properties` com o banco: **configurada** (datasource Postgres + JPA com `ddl-auto=validate`).
+- Versionamento Git: **iniciado localmente**. Push para repositório `almoxe-api` no GitHub: **pendente** — usar "Share Project on GitHub" do IntelliJ Ultimate.
+- Primeira entidade: **pendente** — sugestão de começar por uma simples (Categoria ou Obra) para validar o ciclo completo Entity → Repository → Service → Controller antes de enfrentar ItemEstoque com a máquina de estados. Quando a primeira `@Entity` chegar, introduzir Flyway para versionar o schema (porque `ddl-auto=validate` exige que a tabela já exista no banco).
 - Nenhum código de domínio escrito ainda.
 
 ---

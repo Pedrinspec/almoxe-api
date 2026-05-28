@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: almoxe_db
       POSTGRES_USER: almoxe_app
-      POSTGRES_PASSWORD: 1234
+      POSTGRES_PASSWORD: senha_local_dev
     ports:
       - "5432:5432"
     volumes:
