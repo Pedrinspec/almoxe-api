@@ -35,6 +35,13 @@ public class ProdutoService {
     }
 
     @Transactional(readOnly = true)
+    public List<EstoqueBaixoResponse> listarEstoqueBaixo() {
+        return repository.findAbaixoDoEstoqueMinimo().stream()
+                .map(EstoqueBaixoResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public ProdutoResponse buscarPorId(UUID id) {
         return repository.findById(id)
                 .map(ProdutoResponse::from)
