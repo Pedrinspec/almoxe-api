@@ -3,6 +3,7 @@ package com.almoxe.almoxeapi.common;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -26,6 +27,14 @@ public class GlobalExceptionHandler {
                 new ErrorResponse(Instant.now(), HttpStatus.CONFLICT.value(),
                         "Conflito de dados",
                         List.of("A operação viola uma restrição do banco (unicidade ou referência).")));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest().body(
+                new ErrorResponse(Instant.now(), HttpStatus.BAD_REQUEST.value(),
+                        "Corpo da requisição inválido",
+                        List.of("JSON malformado ou valor incompatível com o tipo esperado.")));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
