@@ -7,6 +7,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +43,14 @@ public class GlobalExceptionHandler {
                 new ErrorResponse(Instant.now(), HttpStatus.BAD_REQUEST.value(),
                         "Corpo da requisição inválido",
                         List.of("JSON malformado ou valor incompatível com o tipo esperado.")));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(
+                new ErrorResponse(Instant.now(), HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                        "Arquivo muito grande",
+                        List.of("O arquivo excede o tamanho máximo permitido (10MB por arquivo).")));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
