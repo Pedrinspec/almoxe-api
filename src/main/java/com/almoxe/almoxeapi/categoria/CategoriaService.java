@@ -1,12 +1,14 @@
 package com.almoxe.almoxeapi.categoria;
 
 import com.almoxe.almoxeapi.common.RecursoNaoEncontradoException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class CategoriaService {
@@ -20,7 +22,9 @@ public class CategoriaService {
     public CategoriaResponse criar(CategoriaRequest request) {
         Categoria categoria = new Categoria();
         categoria.setNome(request.nome());
-        return CategoriaResponse.from(repository.save(categoria));
+        CategoriaResponse criada = CategoriaResponse.from(repository.save(categoria));
+        log.info("Categoria criada: id={} nome={}", criada.id(), criada.nome());
+        return criada;
     }
 
     @Transactional(readOnly = true)
@@ -49,5 +53,6 @@ public class CategoriaService {
             throw new RecursoNaoEncontradoException("Categoria não encontrada: " + id);
         }
         repository.deleteById(id);
+        log.info("Categoria removida: id={}", id);
     }
 }

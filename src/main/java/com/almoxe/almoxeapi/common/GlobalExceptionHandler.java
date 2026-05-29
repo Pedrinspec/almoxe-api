@@ -1,17 +1,21 @@
 package com.almoxe.almoxeapi.common;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -22,8 +26,16 @@ public class GlobalExceptionHandler {
                         "Recurso não encontrado", List.of(ex.getMessage())));
     }
 
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                new ErrorResponse(Instant.now(), HttpStatus.UNAUTHORIZED.value(),
+                        "Falha na autenticação", List.of("Credenciais inválidas.")));
+    }
+
     @ExceptionHandler(RegraNegocioException.class)
     public ResponseEntity<ErrorResponse> handleRegraNegocio(RegraNegocioException ex) {
+        log.warn("Regra de negócio violada: {}", ex.getMessage());
         return ResponseEntity.unprocessableEntity().body(
                 new ErrorResponse(Instant.now(), HttpStatus.UNPROCESSABLE_ENTITY.value(),
                         "Regra de negócio violada", List.of(ex.getMessage())));
@@ -53,6 +65,14 @@ public class GlobalExceptionHandler {
                         List.of("O arquivo excede o tamanho máximo permitido (10MB por arquivo).")));
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest().body(
+                new ErrorResponse(Instant.now(), HttpStatus.BAD_REQUEST.value(),
+                        "Parâmetro inválido",
+                        List.of("Valor inválido para o parâmetro '" + ex.getName() + "'.")));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         List<String> erros = ex.getBindingResult().getFieldErrors().stream()
@@ -61,5 +81,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(
                 new ErrorResponse(Instant.now(), HttpStatus.BAD_REQUEST.value(),
                         "Erro de validação", erros));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleInesperado(Exception ex) {
+        log.error("Erro inesperado", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                new ErrorResponse(Instant.now(), HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "Erro interno", List.of("Ocorreu um erro inesperado. Tente novamente mais tarde.")));
     }
 }

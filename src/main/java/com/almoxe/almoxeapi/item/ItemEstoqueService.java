@@ -11,8 +11,11 @@ import com.almoxe.almoxeapi.obra.ObraService;
 import com.almoxe.almoxeapi.produto.Produto;
 import com.almoxe.almoxeapi.produto.ProdutoRepository;
 import com.almoxe.almoxeapi.produto.TipoControle;
+import com.almoxe.almoxeapi.security.UsuarioAutenticado;
+import com.almoxe.almoxeapi.usuario.Papel;
 import com.almoxe.almoxeapi.usuario.Usuario;
 import com.almoxe.almoxeapi.usuario.UsuarioRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -23,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class ItemEstoqueService {
@@ -45,10 +49,10 @@ public class ItemEstoqueService {
         this.obraService = obraService;
     }
 
-    public ItemEstoqueResponse darEntrada(EntradaRequest request) {
+    public ItemEstoqueResponse darEntrada(EntradaRequest request, UsuarioAutenticado autenticado) {
         Produto produto = produtoRepository.findById(request.produtoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Produto não encontrado: " + request.produtoId()));
-        Usuario usuario = buscarUsuario(request.usuarioId());
+        Usuario usuario = buscarUsuario(autenticado.getId());
 
         validarCamposPorTipoControle(produto, request);
 
@@ -57,17 +61,19 @@ public class ItemEstoqueService {
 
         registrarMovimentacao(item, usuario, TipoMovimentacao.ENTRADA, request.quantidade(), null, request.observacao());
 
+        log.info("Entrada registrada: item={} produto={} quantidade={} por usuario={}",
+                item.getId(), produto.getId(), request.quantidade(), autenticado.getId());
         return ItemEstoqueResponse.from(item);
     }
 
-    public ItemEstoqueResponse alocar(UUID itemId, AlocacaoRequest request) {
+    public ItemEstoqueResponse alocar(UUID itemId, AlocacaoRequest request, UsuarioAutenticado autenticado) {
         ItemEstoque item = buscarItem(itemId);
         exigirStatus(item, StatusItem.DISPONIVEL);
         if (item.getProduto().getTipoControle() == TipoControle.QUANTIDADE) {
             throw new RegraNegocioException(
                     "Itens fungíveis (QUANTIDADE) não são alocados; registre o consumo via baixa.");
         }
-        Usuario registrador = buscarUsuario(request.usuarioId());
+        Usuario registrador = buscarUsuario(autenticado.getId());
         Usuario responsavel = buscarUsuario(request.responsavelId());
         Obra obra = obraService.buscarAtivaOuFalha(request.obraId());
 
@@ -75,35 +81,42 @@ public class ItemEstoqueService {
         item.setResponsavel(responsavel);
 
         registrarMovimentacao(item, registrador, TipoMovimentacao.ALOCACAO, item.getQuantidade(), obra, request.observacao());
+        log.info("Item {} alocado para responsavel {} na obra {} (por usuario={})",
+                item.getId(), responsavel.getId(), obra.getId(), autenticado.getId());
         return ItemEstoqueResponse.from(item);
     }
 
-    public ItemEstoqueResponse usar(UUID itemId, OperacaoRequest request) {
+    public ItemEstoqueResponse usar(UUID itemId, OperacaoRequest request, UsuarioAutenticado autenticado) {
         ItemEstoque item = buscarItem(itemId);
+        exigirAcesso(item, autenticado);
         exigirStatus(item, StatusItem.ALOCADO);
-        Usuario registrador = buscarUsuario(request.usuarioId());
+        Usuario registrador = buscarUsuario(autenticado.getId());
 
         item.setStatus(StatusItem.EM_USO);
 
         registrarMovimentacao(item, registrador, TipoMovimentacao.ALOCACAO, item.getQuantidade(), null, request.observacao());
+        log.info("Item {} marcado como EM_USO (por usuario={})", item.getId(), autenticado.getId());
         return ItemEstoqueResponse.from(item);
     }
 
-    public ItemEstoqueResponse retornar(UUID itemId, OperacaoRequest request) {
+    public ItemEstoqueResponse retornar(UUID itemId, OperacaoRequest request, UsuarioAutenticado autenticado) {
         ItemEstoque item = buscarItem(itemId);
+        exigirAcesso(item, autenticado);
         exigirStatus(item, StatusItem.ALOCADO, StatusItem.EM_USO);
-        Usuario registrador = buscarUsuario(request.usuarioId());
+        Usuario registrador = buscarUsuario(autenticado.getId());
 
         item.setStatus(StatusItem.DISPONIVEL);
         item.setResponsavel(null);
 
         registrarMovimentacao(item, registrador, TipoMovimentacao.RETORNO, item.getQuantidade(), null, request.observacao());
+        log.info("Item {} retornado ao almoxarifado (por usuario={})", item.getId(), autenticado.getId());
         return ItemEstoqueResponse.from(item);
     }
 
-    public ItemEstoqueResponse baixar(UUID itemId, BaixaRequest request) {
+    public ItemEstoqueResponse baixar(UUID itemId, BaixaRequest request, UsuarioAutenticado autenticado) {
         ItemEstoque item = buscarItem(itemId);
-        Usuario registrador = buscarUsuario(request.usuarioId());
+        exigirAcesso(item, autenticado);
+        Usuario registrador = buscarUsuario(autenticado.getId());
         Obra obra = request.obraId() == null ? null : obraService.buscarAtivaOuFalha(request.obraId());
 
         BigDecimal quantidadeBaixa;
@@ -124,29 +137,31 @@ public class ItemEstoqueService {
         }
 
         registrarMovimentacao(item, registrador, TipoMovimentacao.BAIXA, quantidadeBaixa, obra, request.observacao());
+        log.info("Baixa registrada: item={} quantidade={} status={} (por usuario={})",
+                item.getId(), quantidadeBaixa, item.getStatus(), autenticado.getId());
         return ItemEstoqueResponse.from(item);
     }
 
     @Transactional(readOnly = true)
-    public List<ItemEstoqueResponse> listar() {
-        return itemRepository.findAll().stream()
-                .map(ItemEstoqueResponse::from)
-                .toList();
+    public List<ItemEstoqueResponse> listar(UsuarioAutenticado autenticado) {
+        List<ItemEstoque> itens = autenticado.getPapel() == Papel.LIDER
+                ? itemRepository.findByResponsavelId(autenticado.getId())
+                : itemRepository.findAll();
+        return itens.stream().map(ItemEstoqueResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public ItemEstoqueResponse buscarPorId(UUID id) {
-        return itemRepository.findById(id)
-                .map(ItemEstoqueResponse::from)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Item de estoque não encontrado: " + id));
+    public ItemEstoqueResponse buscarPorId(UUID id, UsuarioAutenticado autenticado) {
+        ItemEstoque item = buscarItem(id);
+        exigirAcesso(item, autenticado);
+        return ItemEstoqueResponse.from(item);
     }
 
     @Transactional(readOnly = true)
-    public List<MovimentacaoResponse> historico(UUID itemId) {
-        if (!itemRepository.existsById(itemId)) {
-            throw new RecursoNaoEncontradoException("Item de estoque não encontrado: " + itemId);
-        }
-        return movimentacaoRepository.findByItemEstoqueIdOrderByDataHoraAsc(itemId).stream()
+    public List<MovimentacaoResponse> historico(UUID itemId, UsuarioAutenticado autenticado) {
+        ItemEstoque item = buscarItem(itemId);
+        exigirAcesso(item, autenticado);
+        return movimentacaoRepository.findByItemEstoqueIdOrderByDataHoraAsc(item.getId()).stream()
                 .map(MovimentacaoResponse::from)
                 .toList();
     }
@@ -239,5 +254,16 @@ public class ItemEstoqueService {
         }
         throw new RegraNegocioException("Transição inválida: item está em " + item.getStatus()
                 + " e a operação exige um destes estados: " + Arrays.toString(permitidos) + ".");
+    }
+
+    private void exigirAcesso(ItemEstoque item, UsuarioAutenticado autenticado) {
+        if (autenticado.getPapel() != Papel.LIDER) {
+            return;
+        }
+        boolean ehResponsavel = item.getResponsavel() != null
+                && item.getResponsavel().getId().equals(autenticado.getId());
+        if (!ehResponsavel) {
+            throw new RecursoNaoEncontradoException("Item de estoque não encontrado: " + item.getId());
+        }
     }
 }

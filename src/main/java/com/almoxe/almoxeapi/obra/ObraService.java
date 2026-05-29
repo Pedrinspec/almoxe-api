@@ -2,12 +2,14 @@ package com.almoxe.almoxeapi.obra;
 
 import com.almoxe.almoxeapi.common.RecursoNaoEncontradoException;
 import com.almoxe.almoxeapi.common.RegraNegocioException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class ObraService {
@@ -23,7 +25,9 @@ public class ObraService {
         obra.setNome(request.nome());
         obra.setEndereco(request.endereco());
         obra.setAtiva(true);
-        return ObraResponse.from(repository.save(obra));
+        ObraResponse criada = ObraResponse.from(repository.save(obra));
+        log.info("Obra criada: id={} nome={}", criada.id(), criada.nome());
+        return criada;
     }
 
     @Transactional(readOnly = true)
@@ -52,6 +56,7 @@ public class ObraService {
         Obra obra = repository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Obra não encontrada: " + id));
         obra.setAtiva(false);
+        log.info("Obra desativada (soft delete): id={}", id);
     }
 
     public Obra buscarAtivaOuFalha(UUID id) {

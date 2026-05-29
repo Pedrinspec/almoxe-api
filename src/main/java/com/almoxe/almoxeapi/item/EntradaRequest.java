@@ -12,9 +12,6 @@ public record EntradaRequest(
         UUID produtoId,
 
         @NotNull
-        UUID usuarioId,
-
-        @NotNull
         @Positive
         BigDecimal quantidade,
 

@@ -1,11 +1,16 @@
 {
   "info": {
     "name": "Almoxe API",
-    "description": "Coleção de endpoints da Almoxe API (catálogo, estoque, máquina de estados, obras, fotos, alerta de estoque baixo).\n\nFluxo sugerido para rodar em sequência (Collection Runner ou manualmente de cima para baixo):\n1. Categorias > Criar  (captura categoriaId)\n2. Produtos > Criar UNIDADE_UNICA / QUANTIDADE / LOTE (capturam ids)\n3. Obras > Criar (captura obraId)\n4. Estoque > Entrada (captura itemId / itemQtdId)\n5. Estoque > GET movimentações do item (captura movimentacaoId)\n6. Estoque > Alocar > Usar > Baixar\n7. Fotos > Upload (selecione um arquivo de imagem no campo 'arquivos')\n\nUsuários do seed já vêm como variáveis (almoxarife e líder).",
+    "description": "Coleção de endpoints da Almoxe API (auth JWT, catálogo, estoque, máquina de estados, obras, fotos, alerta de estoque baixo).\n\nAUTENTICAÇÃO: rode primeiro 'Autenticação > Login (almoxarife)' — o script salva o JWT na variável {{token}}, usada como Bearer em toda a coleção. Para testar o papel LIDER, rode 'Login (líder)'.\n\nFluxo sugerido (Collection Runner ou de cima para baixo, logado como ALMOXARIFE):\n1. Login (almoxarife)\n2. Categorias > Criar  (captura categoriaId)\n3. Produtos > Criar UNIDADE_UNICA / QUANTIDADE / LOTE\n4. Obras > Criar\n5. Estoque > Entrada (UNIDADE_UNICA / QUANTIDADE)\n6. Estoque > Histórico de movimentações (captura movimentacaoId)\n7. Estoque > Alocar (responsavelId = líder) > Usar > Baixar\n8. Fotos > Upload (selecione um arquivo no campo 'arquivos')\n\nObs.: 'quem registrou' vem do token (não há mais usuarioId no corpo). responsavelId na alocação aponta para o líder que assume o item.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
     { "key": "usuarioAlmoxarifeId", "value": "11111111-1111-1111-1111-111111111111" },
     { "key": "usuarioLiderId", "value": "22222222-2222-2222-2222-222222222222" },
     { "key": "categoriaId", "value": "" },
@@ -20,23 +25,54 @@
   ],
   "item": [
     {
-      "name": "Usuários",
+      "name": "Autenticação",
       "item": [
         {
-          "name": "Listar usuários",
+          "name": "Login (almoxarife)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 200) { pm.collectionVariables.set('token', pm.response.json().token); }"
+            ] } }
+          ],
           "request": {
-            "method": "GET",
-            "header": [],
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"almoxarife@almoxe.dev\",\n  \"senha\": \"senha123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login (líder)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "if (pm.response.code === 200) { pm.collectionVariables.set('token', pm.response.json().token); }"
+            ] } }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"lider@almoxe.dev\",\n  \"senha\": \"senha123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Cadastrar usuário (ALMOXARIFE)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nome\": \"Novo Líder\",\n  \"email\": \"novo.lider@almoxe.dev\",\n  \"senha\": \"senha123\",\n  \"papel\": \"LIDER\"\n}" },
             "url": { "raw": "{{baseUrl}}/usuarios", "host": ["{{baseUrl}}"], "path": ["usuarios"] }
           }
         },
         {
+          "name": "Listar usuários",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/usuarios", "host": ["{{baseUrl}}"], "path": ["usuarios"] } }
+        },
+        {
           "name": "Buscar usuário por id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{baseUrl}}/usuarios/{{usuarioAlmoxarifeId}}", "host": ["{{baseUrl}}"], "path": ["usuarios", "{{usuarioAlmoxarifeId}}"] }
-          }
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/usuarios/{{usuarioAlmoxarifeId}}", "host": ["{{baseUrl}}"], "path": ["usuarios", "{{usuarioAlmoxarifeId}}"] } }
         }
       ]
     },
@@ -147,7 +183,7 @@
           "request": { "method": "DELETE", "header": [], "url": { "raw": "{{baseUrl}}/produtos/{{produtoId}}", "host": ["{{baseUrl}}"], "path": ["produtos", "{{produtoId}}"] } }
         },
         {
-          "name": "Alerta de estoque baixo",
+          "name": "Alerta de estoque baixo (ALMOXARIFE)",
           "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/produtos/estoque-baixo", "host": ["{{baseUrl}}"], "path": ["produtos", "estoque-baixo"] } }
         }
       ]
@@ -205,7 +241,7 @@
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"produtoId\": \"{{produtoId}}\",\n  \"usuarioId\": \"{{usuarioAlmoxarifeId}}\",\n  \"quantidade\": 1,\n  \"numeroSerie\": \"SN-0001\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"produtoId\": \"{{produtoId}}\",\n  \"quantidade\": 1,\n  \"numeroSerie\": \"SN-0001\"\n}" },
             "url": { "raw": "{{baseUrl}}/itens/entrada", "host": ["{{baseUrl}}"], "path": ["itens", "entrada"] }
           }
         },
@@ -219,7 +255,7 @@
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"produtoId\": \"{{produtoQtdId}}\",\n  \"usuarioId\": \"{{usuarioAlmoxarifeId}}\",\n  \"quantidade\": 1000\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"produtoId\": \"{{produtoQtdId}}\",\n  \"quantidade\": 1000\n}" },
             "url": { "raw": "{{baseUrl}}/itens/entrada", "host": ["{{baseUrl}}"], "path": ["itens", "entrada"] }
           }
         },
@@ -228,7 +264,7 @@
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"produtoId\": \"{{produtoLoteId}}\",\n  \"usuarioId\": \"{{usuarioAlmoxarifeId}}\",\n  \"quantidade\": 200,\n  \"lote\": \"L-2026-05\",\n  \"notaFiscal\": \"NF-9988\",\n  \"numeroRi\": \"RI-555\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"produtoId\": \"{{produtoLoteId}}\",\n  \"quantidade\": 200,\n  \"lote\": \"L-2026-05\",\n  \"notaFiscal\": \"NF-9988\",\n  \"numeroRi\": \"RI-555\"\n}" },
             "url": { "raw": "{{baseUrl}}/itens/entrada", "host": ["{{baseUrl}}"], "path": ["itens", "entrada"] }
           }
         },
@@ -251,47 +287,47 @@
           "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/itens/{{itemId}}/movimentacoes", "host": ["{{baseUrl}}"], "path": ["itens", "{{itemId}}", "movimentacoes"] } }
         },
         {
-          "name": "Alocar item (DISPONIVEL -> ALOCADO)",
+          "name": "Alocar item ao líder (DISPONIVEL -> ALOCADO)",
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"usuarioId\": \"{{usuarioAlmoxarifeId}}\",\n  \"responsavelId\": \"{{usuarioLiderId}}\",\n  \"obraId\": \"{{obraId}}\",\n  \"observacao\": \"Separado para a obra\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"responsavelId\": \"{{usuarioLiderId}}\",\n  \"obraId\": \"{{obraId}}\",\n  \"observacao\": \"Separado para a obra\"\n}" },
             "url": { "raw": "{{baseUrl}}/itens/{{itemId}}/alocacao", "host": ["{{baseUrl}}"], "path": ["itens", "{{itemId}}", "alocacao"] }
           }
         },
         {
-          "name": "Usar item (ALOCADO -> EM_USO)",
+          "name": "Usar item (ALOCADO -> EM_USO) [logar como líder]",
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"usuarioId\": \"{{usuarioLiderId}}\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"observacao\": \"Início de uso em campo\"\n}" },
             "url": { "raw": "{{baseUrl}}/itens/{{itemId}}/uso", "host": ["{{baseUrl}}"], "path": ["itens", "{{itemId}}", "uso"] }
           }
         },
         {
-          "name": "Retornar item (-> DISPONIVEL)",
+          "name": "Retornar item (-> DISPONIVEL) [logar como líder]",
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"usuarioId\": \"{{usuarioLiderId}}\",\n  \"observacao\": \"Devolvido ao almoxarifado\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"observacao\": \"Devolvido ao almoxarifado\"\n}" },
             "url": { "raw": "{{baseUrl}}/itens/{{itemId}}/retorno", "host": ["{{baseUrl}}"], "path": ["itens", "{{itemId}}", "retorno"] }
           }
         },
         {
-          "name": "Baixar item UNIDADE_UNICA (EM_USO -> CONSUMIDO)",
+          "name": "Baixar item UNIDADE_UNICA (EM_USO -> CONSUMIDO) [líder]",
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"usuarioId\": \"{{usuarioLiderId}}\",\n  \"observacao\": \"Quebrou em campo\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"observacao\": \"Quebrou em campo\"\n}" },
             "url": { "raw": "{{baseUrl}}/itens/{{itemId}}/baixa", "host": ["{{baseUrl}}"], "path": ["itens", "{{itemId}}", "baixa"] }
           }
         },
         {
-          "name": "Baixar item QUANTIDADE (baixa parcial)",
+          "name": "Baixar item QUANTIDADE (baixa parcial) [almoxarife ou líder responsável]",
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"usuarioId\": \"{{usuarioLiderId}}\",\n  \"quantidade\": 30,\n  \"obraId\": \"{{obraId}}\",\n  \"observacao\": \"Consumo em obra\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"quantidade\": 30,\n  \"obraId\": \"{{obraId}}\",\n  \"observacao\": \"Consumo em obra\"\n}" },
             "url": { "raw": "{{baseUrl}}/itens/{{itemQtdId}}/baixa", "host": ["{{baseUrl}}"], "path": ["itens", "{{itemQtdId}}", "baixa"] }
           }
         }

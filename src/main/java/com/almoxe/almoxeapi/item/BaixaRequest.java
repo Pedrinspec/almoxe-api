@@ -1,6 +1,5 @@
 package com.almoxe.almoxeapi.item;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -8,9 +7,6 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record BaixaRequest(
-        @NotNull
-        UUID usuarioId,
-
         @Positive
         BigDecimal quantidade,
 

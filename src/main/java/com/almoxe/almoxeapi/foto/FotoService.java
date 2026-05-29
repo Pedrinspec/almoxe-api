@@ -4,6 +4,7 @@ import com.almoxe.almoxeapi.common.RecursoNaoEncontradoException;
 import com.almoxe.almoxeapi.common.RegraNegocioException;
 import com.almoxe.almoxeapi.movimentacao.Movimentacao;
 import com.almoxe.almoxeapi.movimentacao.MovimentacaoRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class FotoService {
@@ -49,7 +51,7 @@ public class FotoService {
             }
         }
 
-        return arquivos.stream().map(arquivo -> {
+        List<FotoResponse> salvas = arquivos.stream().map(arquivo -> {
             String nomeArquivo = armazenamento.salvar(arquivo);
             Foto foto = new Foto();
             foto.setMovimentacao(movimentacao);
@@ -57,6 +59,8 @@ public class FotoService {
             foto.setDataUpload(Instant.now());
             return FotoResponse.from(fotoRepository.save(foto));
         }).toList();
+        log.info("{} foto(s) anexada(s) à movimentação {}", salvas.size(), movimentacaoId);
+        return salvas;
     }
 
     @Transactional(readOnly = true)

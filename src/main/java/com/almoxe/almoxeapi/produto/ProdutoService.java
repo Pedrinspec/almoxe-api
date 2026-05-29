@@ -3,12 +3,14 @@ package com.almoxe.almoxeapi.produto;
 import com.almoxe.almoxeapi.categoria.Categoria;
 import com.almoxe.almoxeapi.categoria.CategoriaRepository;
 import com.almoxe.almoxeapi.common.RecursoNaoEncontradoException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class ProdutoService {
@@ -24,7 +26,9 @@ public class ProdutoService {
     public ProdutoResponse criar(ProdutoRequest request) {
         Produto produto = new Produto();
         aplicar(request, produto);
-        return ProdutoResponse.from(repository.save(produto));
+        ProdutoResponse criado = ProdutoResponse.from(repository.save(produto));
+        log.info("Produto criado: id={} nome={} tipoControle={}", criado.id(), criado.nome(), criado.tipoControle());
+        return criado;
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +64,7 @@ public class ProdutoService {
             throw new RecursoNaoEncontradoException("Produto não encontrado: " + id);
         }
         repository.deleteById(id);
+        log.info("Produto removido: id={}", id);
     }
 
     private void aplicar(ProdutoRequest request, Produto produto) {

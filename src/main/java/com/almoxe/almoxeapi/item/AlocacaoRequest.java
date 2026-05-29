@@ -7,9 +7,6 @@ import java.util.UUID;
 
 public record AlocacaoRequest(
         @NotNull
-        UUID usuarioId,
-
-        @NotNull
         UUID responsavelId,
 
         @NotNull
